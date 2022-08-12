@@ -29,6 +29,11 @@
 
         return this.parent.resolve(name);
     }
+
+    assign(name, value) {
+        this.resolve(name).record[name] = value;
+        return value;
+    }
  }
 
 module.exports = Environment;

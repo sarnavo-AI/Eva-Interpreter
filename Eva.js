@@ -55,6 +55,11 @@ class Eva {
             return env.define(name, this.eval(value, env));
         }
 
+        if(exp[0] === 'set') {
+            const [_, name, value] = exp;
+            return env.assign(name, this.eval(value, env));
+        }
+
         if(isVariableName(exp)) {
             return env.lookup(exp);
         }
@@ -88,57 +93,6 @@ function isVariableName(exp) {
     return typeof exp === 'string' && /^[a-zA-Z][a-zA-Z0-9_]*$/.test(exp);
 }
 
+module.exports = Eva;
 
 //////////////////////////////////////////////
-const eva = new Eva(new Environment({
-    null: null,
-    true: true,
-    false: false,
-    VERSION: '0.1'
-}));
-
-assert.strictEqual(eva.eval(1), 1);
-assert.strictEqual(eva.eval('"Sarnavo"'), 'Sarnavo');
-assert.strictEqual(eva.eval(['+', 1, 2]), 3);
-assert.strictEqual(eva.eval(['*', 2, 3]), 6);
-
-assert.strictEqual(eva.eval(['var', 'x', '"10"']), '10');
-assert.strictEqual(eva.eval('x'), '10');
-
-assert.strictEqual(eva.eval(['var', 'x', 'true']), true);
-
-assert.strictEqual(eva.eval(['var', 'x', ['*', 2, 2]]), 4);
-
-assert.strictEqual(eva.eval(
-    ['begin', 
-        ['var', 'x', 20],
-        ['var', 'y', 30],
-
-        ['+', ['*', 'x', 'y'], 30]
-    ]), 630)
-
-assert.strictEqual(eva.eval(
-    ['begin', 
-        ['var', 'x', 20],
-
-        ['begin', 
-            ['var', 'x', 10],
-            'x'
-        ],
-
-        'x'
-    ]), 20)
-
-assert.strictEqual(eva.eval(
-    ['begin', 
-        ['var', 'x', 20],
-
-        ['var', 'res', ['begin', 
-            ['var', 'y', 10],
-            ['+', 'x', 'y']
-        ]],
-
-        'res'
-    ]), 30)
-
-console.log("All Assertions Passed!");
