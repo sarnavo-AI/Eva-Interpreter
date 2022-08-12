@@ -3,8 +3,9 @@
 */
 
  class Environment {
-    constructor(record = {}) {
+    constructor(record = {}, parent = null) {
         this.record = record;
+        this.parent = parent;
     }
 
 
@@ -14,11 +15,19 @@
     }
 
     lookup(name) {
-        // console.log(this.record)
-        if(!this.record.hasOwnProperty(name)) {
-            throw new ReferenceError(`Variable "${name}" is not defined.`);
+        return this.resolve(name).record[name];
+    }
+
+    resolve(name) {
+        if(this.record.hasOwnProperty(name)) {
+            return this;
         }
-        return this.record[name];
+
+        if(this.parent == null) {
+            throw new ReferenceError(`Variable "${name} is not defined."`);
+        }
+
+        return this.parent.resolve(name);
     }
  }
 
