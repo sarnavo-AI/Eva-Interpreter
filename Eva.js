@@ -41,6 +41,28 @@ class Eva {
                 return undefined;
         }
 
+        // Operators
+        //////////////////////////////
+        if(exp[0] === '>') {
+            return this.eval(exp[1], env) > this.eval(exp[2], env);
+        }                                                
+        
+        if(exp[0] === '<') {
+            return this.eval(exp[1], env) < this.eval(exp[2], env);
+        }                                                
+        
+        if(exp[0] === '>=') {
+            return this.eval(exp[1], env) >= this.eval(exp[2], env);
+        }   
+
+        if(exp[0] === '<=') {
+            return this.eval(exp[1], env) <= this.eval(exp[2], env);
+        }
+
+        if(exp[0] === '==') {
+            return this.eval(exp[1], env) === this.eval(exp[2], env);
+        }
+
         // Blocks
         //////////////////////////////
         if(exp[0] === 'begin') {
@@ -62,6 +84,18 @@ class Eva {
 
         if(isVariableName(exp)) {
             return env.lookup(exp);
+        }
+
+        // If Statement
+        //////////////////////////////
+        if(exp[0] === 'if') {
+            const [_tag, condition, consequent, alternate] = exp;
+            if(this.eval(condition, env)) {
+                return this.eval(consequent, env);
+            }
+            else {
+                return this.eval(alternate, env);
+            }
         }
 
 
