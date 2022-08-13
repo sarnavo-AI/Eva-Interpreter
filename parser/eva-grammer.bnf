@@ -1,0 +1,39 @@
+// ----------------------------
+// Lexical Grammer (tokens):
+
+%lex
+
+%%
+
+\s+             /* White Space */
+
+\"[^\"]*\"      return 'STRING'
+
+\d+             return 'NUMBER'
+
+[\w\-+*=<>/]+    return 'SYMBOL' 
+
+/lex
+
+// Syntactic Grammer (BNF):
+%%
+
+Exp
+    : Atom
+    | List
+    ;
+
+Atom
+    : NUMBER { $$ = Number($1) }
+    | STRING
+    | SYMBOL
+    ;
+
+List
+    : '(' ListEntries ')' { $$ = $2 }  // ListEntries is in position 2
+    ;
+
+ListEntries
+    : ListEntries Exp { $1.push($2); $$ = $1 }
+    | /* Empty */ { $$ = [] }
+    ;
