@@ -8,16 +8,21 @@
         this.parent = parent;
     }
 
-
+    // Definition of Variable
+    /////////////////////////////
     define(name, value) {
         this.record[name] = value;
         return value;
     }
 
+    // Looking Up for the variable
+    /////////////////////////////
     lookup(name) {
         return this.resolve(name).record[name];
     }
 
+    // Resolve the variable
+    /////////////////////////////
     resolve(name) {
         if(this.record.hasOwnProperty(name)) {
             return this;
@@ -30,6 +35,8 @@
         return this.parent.resolve(name);
     }
 
+    // Assigning a value to a existing variable
+    /////////////////////////////
     assign(name, value) {
         this.resolve(name).record[name] = value;
         return value;

@@ -1,15 +1,19 @@
 const assert = require('assert');
 
 const Environment = require('./Environment');
+const Transformer = require("./transform/Transformer");
 
 class Eva {
 
     constructor(global = GlobalEnvironment) {
         this.global = global;
+        this._transformer = new Transformer();
     }
 
     eval(exp, env = this.global) {
         
+        // console.log(exp);
+
         // Self Evaluating Expressions
         //////////////////////////////
         if(this._isNumber(exp)) {
@@ -73,13 +77,79 @@ class Eva {
         if(exp[0] === 'def') {
             const [_tag, name, params, body] = exp;
 
-            const fn = {
+            // const fn = {
+            //     params,
+            //     body,
+            //     env, // closure
+            // };
+            
+            // return env.define(name, fn);
+            
+            // Just in time Transpilation
+            // const varExp = ['var', name, ['lambda', params, body]];
+
+            const varExp = this._transformer.transformDeftoLambda(exp);
+            return this.eval(varExp, env);
+        }
+
+        // Switch Expression
+        //////////////////////////////        
+        if(exp[0] === 'switch') {
+            const ifExp = this._transformer.transformSwitchtoIf(exp);
+            
+            return this.eval(ifExp, env);
+        }
+
+        // For Expression
+        //////////////////////////////        
+        if(exp[0] === 'for') {
+            const whileExp = this._transformer.transformForToWhile(exp);
+            
+            return this.eval(whileExp, env);
+        }
+
+        // ++ Operator (++ foo)
+        //////////////////////////////        
+        if(exp[0] === '++') {
+            const increaseExp = this._transformer.transformIncreaseToSet(exp);
+            
+            return this.eval(increaseExp, env);
+        }
+
+        // += Operator (+= foo inc)
+        //////////////////////////////        
+        if(exp[0] === '+=') {
+            const increaseExp = this._transformer.transformIncreaseToSet(exp);
+            
+            return this.eval(increaseExp, env);
+        }
+
+        // -- Operator (-- foo)
+        //////////////////////////////        
+        if(exp[0] === '--') {
+            const decreaseExp = this._transformer.transformDecreaseToSet(exp);
+            
+            return this.eval(decreaseExp, env);
+        }
+
+        // += Operator (-= foo dec)
+        //////////////////////////////        
+        if(exp[0] === '-=') {
+            const decreaseExp = this._transformer.transformDecreaseToSet(exp);
+            
+            return this.eval(decreaseExp, env);
+        }
+
+        // Lamda Declaration
+        //////////////////////////////
+        if(exp[0] === 'lambda') {
+            const [_tag, params, body] = exp;
+
+            return {
                 params,
                 body,
                 env, // closure
-            };
-            
-            return env.define(name, fn); 
+            }; 
         }
 
         if(Array.isArray(exp)) {
@@ -87,7 +157,7 @@ class Eva {
             const args = exp
                             .slice(1)
                             .map(arg => this.eval(arg, env));
-
+            // console.log("argument", args);
             // Native Functions
             ///////////////////
             if(typeof function_name === 'function') {
@@ -97,11 +167,11 @@ class Eva {
             // User defined Functions
             ///////////////////
             const activationRecord = {}
-
+            // console.log("function_name", function_name);
             function_name.params.forEach((param, index) => {
                 activationRecord[param] = args[index];
             })
-
+            // console.log('activationRecord', activationRecord);
             const activationEnv = new Environment(
                 activationRecord,
                 function_name.env // Static scope
