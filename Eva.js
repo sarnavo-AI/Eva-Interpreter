@@ -2,6 +2,8 @@ const assert = require('assert');
 
 const Environment = require('./Environment');
 const Transformer = require("./transform/Transformer");
+const evaParser = require("./parser/evaParser");
+const fs = require("fs");
 
 class Eva {
 
@@ -41,8 +43,19 @@ class Eva {
         }
 
         if(exp[0] === 'set') {
-            const [_, name, value] = exp;
-            return env.assign(name, this.eval(value, env));
+            const [_, ref, value] = exp;
+
+            if(ref[0] === 'prop') {
+                const [_tag, instance, propName] = ref;
+                const instanceEnv = this.eval(instance, env);
+
+                return instanceEnv.define(
+                    propName,
+                    this.eval(value, env),
+                );
+            }
+
+            return env.assign(ref, this.eval(value, env));
         }
 
         if(this._isVariableName(exp)) {
@@ -152,6 +165,87 @@ class Eva {
             }; 
         }
 
+        // class Declaration
+        //////////////////////////////
+        if (exp[0] === 'class') {
+            const [_tag, name, parent, body] = exp;
+
+            const parentEnv = this.eval(parent, env) || env;
+
+            const classEnv = new Environment({}, parentEnv);
+
+            this._evalBody(body, classEnv);
+
+            return env.define(name, classEnv);
+        }
+
+        // New Declaration
+        //////////////////////////////
+        if(exp[0] === 'new') {
+
+            const classEnv = this.eval(exp[1], env);
+
+            const instanceEnv = new Environment({}, classEnv);
+
+            const args = exp
+                            .slice(2)
+                            .map(arg => this.eval(arg, env));
+
+            this._callUserDefinedFunction(
+                classEnv.lookup('constructor'),
+                [instanceEnv, ...args],
+            );
+
+            return instanceEnv;
+        }
+
+        // Prop Declaration
+        //////////////////////////////
+        if(exp[0] === 'prop') {
+            const [_tag, instance, name] = exp;
+
+            const instanceEnv = this.eval(instance, env);
+
+            return instanceEnv.lookup(name);
+        }
+
+        // Prop Declaration
+        //////////////////////////////
+        if(exp[0] === 'super') {
+            const [_tag, className] = exp;
+            return this.eval(className, env).parent; 
+        }
+
+        // Module Declaration
+        //////////////////////////////
+        if(exp[0] === 'module') {
+            const [_tag, name, body] = exp;
+
+            const moduleEnv = new Environment({}, env);
+
+            this._evalBody(body, moduleEnv);
+
+            return env.define(name, moduleEnv);
+        }
+
+        // import Declaration
+        //////////////////////////////
+        if(exp[0] === 'import') {
+            const [_tag, name] = exp;
+
+            const moduleSrc = fs.readFileSync(
+                `${__dirname}/module/${name}.eva`,
+                'utf-8',
+            );
+
+            const body = evaParser.parse(`(begin ${moduleSrc})`);
+            
+            const moduleExp = ['module', name, body];
+
+            return this.eval(moduleExp, this.global);
+        }
+
+
         if(Array.isArray(exp)) {
             const function_name = this.eval(exp[0], env);
             const args = exp
@@ -166,7 +260,33 @@ class Eva {
 
             // User defined Functions
             ///////////////////
-            const activationRecord = {}
+            
+            return this._callUserDefinedFunction(function_name, args);
+
+            // const activationRecord = {}
+            // // console.log("function_name", function_name);
+            // function_name.params.forEach((param, index) => {
+            //     activationRecord[param] = args[index];
+            // })
+            // // console.log('activationRecord', activationRecord);
+            // const activationEnv = new Environment(
+            //     activationRecord,
+            //     function_name.env // Static scope
+            //     // env --> will enable dynamic scoping
+            // );
+            
+            // return this._evalBody(function_name.body, activationEnv);
+
+
+        }
+        
+        // Unimplemented Section
+        //////////////////////////////
+        throw `Unimplemented ${JSON.stringify(exp)}`;
+    }
+
+    _callUserDefinedFunction(function_name, args) {
+        const activationRecord = {}
             // console.log("function_name", function_name);
             function_name.params.forEach((param, index) => {
                 activationRecord[param] = args[index];
@@ -179,11 +299,6 @@ class Eva {
             );
             
             return this._evalBody(function_name.body, activationEnv);
-        }
-        
-        // Unimplemented Section
-        //////////////////////////////
-        throw `Unimplemented ${JSON.stringify(exp)}`;
     }
 
     _evalBody(body, env) {
